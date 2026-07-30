@@ -1,108 +1,132 @@
-# Portfolio
-# Active Directory & SIEM Home Lab
+# Enterprise Windows Lab: Network Setup, AD Configuration & Credential Spraying
 
-## Overview
+A comprehensive home lab project demonstrating end-to-end infrastructure setup, Active Directory domain configuration, and security assessment techniques. This project highlights **virtual networking**, **DNS/AD architecture**, and **credential attack simulation** using modern tools.
 
-This project demonstrates the design, deployment, and monitoring of a small enterprise-style Windows environment within an isolated virtual lab. The infrastructure was built to simulate a corporate Active Directory network and forms the foundation for future security operations, threat detection, and incident response exercises.
-
-The lab consists of a Windows Server Domain Controller, domain-joined Windows workstation, and a dedicated Splunk SIEM server used to collect and analyse security events in real time.
-
----
-
-## Infrastructure
-
-| Component                      | Role                                         |
-| ------------------------------ | -------------------------------------------- |
-| **Windows Server 2025**        | Active Directory Domain Controller & DNS     |
-| **Windows 11 Pro**             | Domain-joined client workstation             |
-| **Splunk Enterprise**          | SIEM platform for centralised log collection |
-| **Splunk Universal Forwarder** | Endpoint log collection                      |
-| **Oracle VirtualBox**          | Virtualisation platform                      |
-| **Isolated NAT Network**       | Simulated enterprise network                 |
+## Project Scope
+1.  **Infrastructure:** Build an isolated virtual network with multiple VMs.
+2.  **Networking:** Configure static IPs, DNS, and VirtualBox NAT networking.
+3.  **Wintel:** Deploy and configure Windows Server 2022 as a Domain Controller and Windows 11 as a domain-joined client.
+4.  **Security:** Execute a password spray attack to test local account security posture.
 
 ---
 
-## Project Highlights
+## Phase 1: Virtual Network Architecture
 
-### Active Directory Deployment
+The lab is built on an isolated **VirtualBox Internal Network** to simulate a corporate LAN without exposing the environment to the internet.
 
-* Built a Windows Server 2025 Domain Controller from scratch
-* Configured Active Directory Domain Services (AD DS)
-* Implemented internal DNS for domain name resolution
-* Created organisational units, user accounts, and computer objects
-* Joined Windows 11 workstation to the domain
-* Configured static IP addressing and enterprise-style network architecture
+### Network Configuration
+| VM Role | OS | IP Address | Subnet | DNS |
+| :--- | :--- | :--- | :--- | :--- |
+| **Domain Controller** | Windows Server 2022 | `10.0.2.10` | `255.255.255.0` | `10.0.2.10` |
+| **Client Workstation** | Windows 11 Pro | `10.0.2.3` | `255.255.255.0` | `10.0.2.10` |
+| **Attacker** | Kali Linux | `10.0.2.5` | `255.255.255.0` | `10.0.2.10` |
 
-### SIEM & Security Monitoring
-
-* Deployed Splunk Enterprise within the lab
-* Configured Universal Forwarders on multiple Windows hosts
-* Centralised Windows Security, System, and Application logs
-* Validated successful log ingestion using Splunk Search Processing Language (SPL)
-* Generated and detected failed authentication events (Windows Event ID 4625)
-* Built the foundation for future threat hunting and detection engineering exercises
+**Key Networking Skills Demonstrated:**
+*   **Static IP Assignment:** Configured manually to ensure reliable connectivity.
+*   **DNS Forwarding:** Client DNS points to the Domain Controller to enable AD resolution.
+*   **Network Isolation:** Used VirtualBox "Internal Network" mode to create a secure, private segment.
 
 ---
 
-## Technologies Used
+## Phase 2: Domain Controller Setup (Windows Server)
 
-* Windows Server 2025
-* Windows 11 Pro
-* Active Directory
-* DNS
-* Splunk Enterprise
-* Splunk Universal Forwarder
-* Windows Event Logs
-* Search Processing Language (SPL)
-* Oracle VirtualBox
-* Virtual Networking
-* Windows Firewall
-* Identity & Access Management (IAM)
+Configured the core identity infrastructure for the enterprise environment.
+
+### 1. Server Initialization
+*   Installed **Windows Server 2022**.
+*   Configured **Static IP** (`10.0.2.10`) and set DNS to `10.0.2.10` (localhost).
+
+![AD DS Installation & Promotion](./Screenshots/DC01-Install.png)
+![DC01 IP Configuration](./Screenshots/DC01-Domain-Config.png)
+
+### 2. Active Directory Domain Services (AD DS)
+*   **Promoted to Domain Controller:** Created the `corp.local` forest.
+*   **DNS Configuration:** Verified creation of `_msdcs`, `_tcp`, and `_ldap` SRV records essential for AD discovery.
+*   **Active Directory User:** Lastly I created an Organisational Unit within Active Directory, along with a new user. This is to showcase how active director can be used to create a hierarchy within the domain and how users can be created and assigned with the domain.
+
+![Domain Controller Setup](./Screenshots/DC01-Domain-Setup.png)
+![DC01 Domain Result](./Screenshots/DC01-Domain-Result.png)
+![AD New User](./Screenshots/AD-New-User.png)
+
+**Key Skills:**
+*   Server Manager & AD DS Role installation.
+*   DNS Zone management and SRV record verification.
+*   Forest and Domain creation.
+*   User and Active Directory configuraton.
+---
+
+## Phase 3: Client Configuration (Windows 11)
+
+Prepared the client workstation to join the enterprise domain.
+
+### 1. Installation, Network & DNS Configuration
+*   Installed Windows 11 Pro.
+*   Created a single partition for the drive .
+*   Set **Static IP** (`10.0.2.3`).
+*   **Critical Step:** Set **Primary DNS** to the Domain Controller IP (`10.0.2.10`).
+    *   *Why:* This allows the client to locate the DC via SRV records for domain joining.
+
+![Windows 11 Install](./Screenshots/W11-Client-Setup.png)
+![Client01 IP Configuration](./Screenshots/Client01-IP-Config.png)
+
+### 2. Domain Join
+*   Changed computer membership from **Workgroup** to **Domain** (`corp.local`).
+*   Provided Domain Admin credentials to authenticate and join.
+*   Rebooted and verified successful login with a domain account.
+
+![Client01 Domain Configuration](./Screenshots/Client01-Domain-Join.png)
+![Client01 Domain verification](./Screenshots/Client01-Domain-Success.png)
+
+**Key Skills:**
+*   Client-side DNS configuration for AD.
+*   Domain join process and trust relationship establishment.
+*   Troubleshooting DNS resolution for AD services.
 
 ---
 
-## Skills Demonstrated
+## Phase 4: Security Assessment (Credential Spraying)
 
-* Active Directory Administration
-* Windows Server Management
-* SIEM Deployment & Configuration
-* Log Collection & Analysis
-* Security Monitoring
-* Identity & Access Management
-* Windows Networking
-* DNS Configuration
-* Virtualisation
-* Infrastructure Troubleshooting
-* Incident Investigation
-* Technical Documentation
+Simulated a real-world attack to test the security posture of local accounts within the domain environment.
 
----
+### 1. Target Preparation
+Created a local administrator account on the Windows 11 client to test against.
+```powershell
+# PowerShell on Windows 11
+New-LocalUser -Name "John Doe" -Password (ConvertTo-SecureString "Password123!" -AsPlainText -Force)
+Add-LocalGroupMember -Group "Administrators" -Member "John Doe"
+```
 
-## Business Relevance
+### 2. Attack Tooling
+Used NetExec (nxc) on Kali Linux to perform a password spray against the SMB service on Client 01 (Port 445)
+```bash
+nxc smb 10.0.2.3 \
+  -u scripts/attack-simulation/wordlists/target-users.txt \
+  -p scripts/attack-simulation/wordlists/spray-passwords.txt \
+  --local-auth
+  ```
+  `--local-auth`: Targets the local SAM database to bypass domain authorisaton
+  
+  `target-users.txt`: A text file containing common usernames, in this example John Doe 
+  
+  `spray-passwords.txt`: A text file containing a list of common passwords
 
-This lab mirrors the core technologies found within many enterprise IT environments. It demonstrates practical experience deploying and supporting Microsoft infrastructure while implementing centralised security monitoring similar to that used by Security Operations Centres (SOCs).
+  ### 3. Results
+  Successfully authenticated with the local account, demonstrating that weak local passwords are a critical vulnerability even in a hardened domain environment.
+  
+  ![Password Spray](./Screenshots/Password-Spray-Success.png)
 
-Rather than simply installing software, this project showcases the complete lifecycle of enterprise infrastructure:
+  ---
 
-* Designing a secure Windows domain
-* Managing users and authentication
-* Centralising security telemetry
-* Investigating authentication events
-* Building infrastructure ready for vulnerability management, attack simulation, and threat detection
+  ## Conclusion
+  
+  ### Why attack a local account instead of the domain?
+  Because it's a more realistic finding, not a less impressive one. Security teams spend a lot of effort hardening domain password policy, lockout thresholds, and MFA — and then a local administrator account, created once during imaging or a support call and never touched again, sits on every machine in the fleet with the same weak, shared password. A single Windows domain policy has zero authority over that account. This is one of the most common findings in real internal penetration tests, and it's the reason Microsoft built a dedicated tool (LAPS) to solve it, rather than expecting domain policy to reach far enough.
 
----
+  ### Why spraying, specifically, and not just guessing one password once?
+  A real spray tries a small number of common or seasonal passwords across a large number of accounts, deliberately slowly, to stay under any account-lockout threshold that might be watching. That's the behavior NetExec's `-u`/`-p` list combination simulates here, even against a single local account. The technique, not just the outcome, is what's being demonstrated. This maps to MITRE ATT&CK T1110.003 — Brute Force: Password Spraying under the Credential Access tactic.
 
-## Outcome
-
-The completed environment provides:
-
-* Enterprise-style Active Directory infrastructure
-* Centralised identity management
-* Internal DNS services
-* Domain-joined Windows endpoints
-* Centralised SIEM logging
-* Real-time security event monitoring
-* A scalable platform for future cybersecurity projects including Sysmon, Atomic Red Team, Kali Linux, Nessus, and detection engineering.
-
-This project demonstrates practical, hands-on experience with technologies commonly used in Systems Administration, Infrastructure Engineering, Cyber Security, SOC Operations, and Blue Team environments.
-
+  ### What this proves, for a Wintel or Security audience respectively:
+  for Wintel, it's evidence of understanding AD structure, DNS-dependent domain join, and the practical boundary of what domain policy actually governs. For security, it's evidence of understanding real attacker tradecraft well enough to simulate it.
+  
+  ### The Aftermath
+  After a successful password spray, a SOC analyst using a SIEM tool such as Splunk or Wazuh would be able to detect two Windows Security Events. A flurry of `EventCode 4625` failed log on attempts and a single `EventCode 4624` successful log on. In isolation, this wouldn't cause alarm as users may forget a password or create typos. The key is the pattern, a number of failures across multiple accounts from a single source. This leads on to incident management process, containment and recovery.
